@@ -1,4 +1,5 @@
 import random
+import re
 
 import znc
 
@@ -17,15 +18,19 @@ def _mkhelp():
     return pt.get_string(sortby='Command')
 
 
-HELP_TXT = _mkhelp()
+HELP_TEXT = _mkhelp().splitlines()
 PM_TRIGGER = '!r'
 
 
 class polyhedral(znc.Module):
     description = 'Polyhedral Dice'
 
-    # BOOK KEEPING
     def cmd_add(self, line):
+        '''Add a channel
+        usage: Add <channel> <trigger>
+        channel - the channel name
+        trigger - the prefix that the script will respond to
+        '''
         channel, _, trigger = line.partition(' ')
         if not channel or not trigger:
             self.PutModule('Invalid arguments')
@@ -34,6 +39,10 @@ class polyhedral(znc.Module):
         self.PutModule('Channel added')
 
     def cmd_del(self, line):
+        '''Remove a channel
+        usage: Del <channel>
+        channel - the channel name
+        '''
         channel, _, _ = line.partition(' ')
         if not channel:
             self.PutModule('Invalid arguments')
@@ -45,6 +54,9 @@ class polyhedral(znc.Module):
             self.PutModule('Channel not found')
 
     def cmd_list(self, line):
+        '''List all channels currently in the script
+        usage: List
+        '''
         channels = list(self.nv.values())
         if channels:
             pt = prettytable.PrettyTable(('Channel', 'Trigger'))
@@ -57,7 +69,12 @@ class polyhedral(znc.Module):
             self.PutModule('No channels enabled')
 
     def cmd_help(self, line):
-        for line in HELP_TXT.splitlines():
+        help_text = {
+            'add': self.cmd_add.__doc__.splitlines(),
+            'del': self.cmd_del.__doc__.splitlines(),
+            'list': self.cmd_list.__doc__.splitlines(),
+        }
+        for line in help_text.get(line.split()[0], HELP_TEXT):
             self.PutModule(line)
 
     def OnModCommand(self, line):
@@ -86,8 +103,44 @@ class polyhedral(znc.Module):
         nick = nick.GetNick()
         first, _, rest = str(message).partition(' ')
         if first == PM_TRIGGER:
-            self._roll(nick, nick, rest)
+            self._roll('You', nick, rest)
         return znc.CONTINUE
 
     def _roll(self, nick, to, dice_line):
-        self.PutIRC('PRIVMSG {0} :{1}'.format(to, ''))
+        pattern = (
+            r'(?P<count>\d+)'  # Number of dice
+            r'd(?P<sides>\d+)'  # Sides of dice
+            r'(?P<modifier>[+-]\d+)?'  # +/- modifiers (optional)
+            r'(?:\s(?P<action>.*))?'  # action text (optional)
+        )
+        match = re.match(pattern, dice_line)
+        if not match:
+            return
+        matchdict = match.groupdict()
+        count = int(matchdict.get('count'))
+        sides = int(matchdict.get('sides'))
+        mod = int(matchdict.get('modifier', 0))
+        action = (
+            ' to {}'.format(matchdict.get('action')) if mod is not None else ''
+        )
+        rolls = [random.randint(1, sides) for _ in range(count)]
+        rollstr = '+'.join(str(x) for x in rolls)
+        total = sum(rolls) + mod
+        modstr = '' if mod == 0 else '{:+}'.format(mod)
+        format_str = (
+            '{nick} rolled {count}d{sides}{modstr} '
+            '[{rollstr}{modstr} = {total}]{action}'
+        )
+        output = format_str.format(
+            nick=nick,
+            count=count,
+            sides=sides,
+            modstr=modstr,
+            rollstr=rollstr,
+            total=total,
+            action=action
+        )
+        self.send_message(to, output)
+
+    def send_message(self, to, text):
+        self.PutIRC('PRIVMSG {0} :{1}'.format(to, text))
