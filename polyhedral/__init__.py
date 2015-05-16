@@ -1,9 +1,7 @@
 import random
 
-try:
-    import znc
-except ImportError:
-    from dice.tests import mock_znc as znc
+import znc
+
 from dice import prettytable
 
 
@@ -13,56 +11,46 @@ def _mkhelp():
     pt.align = 'l'
     pt.add_row(['Add', '<chan>', 'Enable dice in <chan>'])
     pt.add_row(['Del', '<chan>', 'Disable dice in <chan>'])
+    pt.add_row(['Set', '<chan>', 'Disable dice in <chan>'])
     pt.add_row(['List', '', ''])
     pt.add_row(['Help', '', 'Generate this output'])
     return pt.get_string(sortby='Command')
 
 
 HELP_TXT = _mkhelp()
+PM_TRIGGER = '!r'
 
 
-class dice(znc.Module):
-    description = 'Dice for Kismet'
+class polyhedral(znc.Module):
+    description = 'Polyhedral Dice'
 
-    def nv_add(self, channel):
-        self.nv[channel] = '1'
-
-    def nv_del(self, channel):
-        if channel in self.nv:
-            del self.nv[channel]
-
-    def nv_list(self):
-        return list(self.nv.keys())
-
+    # BOOK KEEPING
     def cmd_add(self, line):
-        channel = line.split(' ')[0]
-        if not channel:
-            self.PutModule('Missing argument')
-        else:
-            if channel in self.nv_list():
-                self.PutModule('Channel already enabled')
-            else:
-                self.nv_add(channel)
-                self.PutModule('Channel enabled')
+        channel, _, trigger = line.partition(' ')
+        if not channel or not trigger:
+            self.PutModule('Invalid arguments')
+            return
+        self.nv[channel] = trigger
+        self.PutModule('Channel added')
 
     def cmd_del(self, line):
-        channel = line.split(' ')[0]
+        channel, _, _ = line.partition(' ')
         if not channel:
-            self.PutModule('Missing argument')
+            self.PutModule('Invalid arguments')
+            return
+        if channel in self.nv:
+            del self.nv[channel]
+            self.PutModule('Channel removed')
         else:
-            if channel in self.nv_list():
-                self.nv_del(channel)
-                self.PutModule('Channel disabled')
-            else:
-                self.PutModule('Channel not enabled')
+            self.PutModule('Channel not found')
 
     def cmd_list(self, line):
-        chans = self.nv_list()
-        if chans:
-            pt = prettytable.PrettyTable(('Channel',))
+        channels = list(self.nv.values())
+        if channels:
+            pt = prettytable.PrettyTable(('Channel', 'Trigger'))
             pt.align = 'l'
-            for chan in chans:
-                pt.add_row((chan,))
+            for channel, trigger in channels:
+                pt.add_row((channel, trigger))
             for line in pt.get_string(sortby='Channel').splitlines():
                 self.PutModule(line)
         else:
@@ -87,37 +75,19 @@ class dice(znc.Module):
 
     def OnChanMsg(self, nick, chan, message):
         nick = nick.GetNick()
-        message = str(message).split(' ')
+        first, _, rest = str(message).partition(' ')
         chan = chan.GetName()
-        if message[0] == '!roll' and chan in self.nv_list():
-            target_number = self._tn(message, 1)
-            self._roll(nick, chan, target_number)
+        trigger = self.nv.get(chan, None)
+        if trigger and first == trigger:
+            self._roll(nick, chan, rest)
         return znc.CONTINUE
 
     def OnPrivMsg(self, nick, message):
         nick = nick.GetNick()
-        message = str(message).split(' ')
-        if message[0] == '!roll':
-            target_number = self._tn(message, 1)
-            self._roll(nick, nick, target_number)
+        first, _, rest = str(message).partition(' ')
+        if first == PM_TRIGGER:
+            self._roll(nick, nick, rest)
         return znc.CONTINUE
 
-    def _tn(self, num, idx):
-        try:
-            return int(num[idx])
-        except (ValueError, IndexError):
-            return 20
-
-    def _roll(self, nick, to, target_number):
-        roll = random.randint(1, 20)
-        success = roll <= target_number
-        success_str = 'Success' if success else 'Failure'
-        template = '{0} rolled {1} vs. {2}: {3}'
-        output = template.format(
-            nick,
-            roll,
-            target_number,
-            success_str,
-        )
-        self.PutIRC('PRIVMSG {0} :{1}'.format(to, output))
-        return znc.CONTINUE
+    def _roll(self, nick, to, dice_line):
+        self.PutIRC('PRIVMSG {0} :{1}'.format(to, ''))
