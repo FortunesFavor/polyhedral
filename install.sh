@@ -1,5 +1,5 @@
 #!/bin/bash
-PACKAGE="dice"
+PACKAGE="polyhedral"
 ZDIR="$HOME/.znc"
 
 ZMODDIR="$ZDIR/modules"
