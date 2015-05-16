@@ -12,7 +12,6 @@ def _mkhelp():
     pt.align = 'l'
     pt.add_row(['Add', '<chan>', 'Enable dice in <chan>'])
     pt.add_row(['Del', '<chan>', 'Disable dice in <chan>'])
-    pt.add_row(['Set', '<chan>', 'Disable dice in <chan>'])
     pt.add_row(['List', '', ''])
     pt.add_row(['Help', '', 'Generate this output'])
     return pt.get_string(sortby='Command')
@@ -57,7 +56,7 @@ class polyhedral(znc.Module):
         '''List all channels currently in the script
         usage: List
         '''
-        channels = list(self.nv.values())
+        channels = list(self.nv.items())
         if channels:
             pt = prettytable.PrettyTable(('Channel', 'Trigger'))
             pt.align = 'l'
@@ -69,12 +68,14 @@ class polyhedral(znc.Module):
             self.PutModule('No channels enabled')
 
     def cmd_help(self, line):
+        command = line.split(' ')[0] if line else None
         help_text = {
             'add': self.cmd_add.__doc__.splitlines(),
             'del': self.cmd_del.__doc__.splitlines(),
             'list': self.cmd_list.__doc__.splitlines(),
+            None: HELP_TEXT
         }
-        for line in help_text.get(line.split()[0], HELP_TEXT):
+        for line in help_text.get(command):
             self.PutModule(line)
 
     def OnModCommand(self, line):
@@ -119,9 +120,11 @@ class polyhedral(znc.Module):
         matchdict = match.groupdict()
         count = int(matchdict.get('count'))
         sides = int(matchdict.get('sides'))
-        mod = int(matchdict.get('modifier', 0))
+        mod = matchdict.get('modifier')
+        mod = int(mod) if mod is not None else 0
+        action = matchdict.get('action')
         action = (
-            ' to {}'.format(matchdict.get('action')) if mod is not None else ''
+            ' to {}'.format(action) if action is not None else ''
         )
         rolls = [random.randint(1, sides) for _ in range(count)]
         rollstr = '+'.join(str(x) for x in rolls)
