@@ -1,0 +1,6 @@
+[report]
+omit =
+    */python?.?/*
+    */site-packages/*
+    *.egg
+    *prettytable.py
