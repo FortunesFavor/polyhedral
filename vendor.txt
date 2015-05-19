@@ -1,2 +1,3 @@
 prettytable
-pyparsing
+git+git://github.com/tritium21/pydiceparse
+git+git://github.com/tritium21/pynvwrapper
