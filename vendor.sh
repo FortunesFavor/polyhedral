@@ -1,4 +1,4 @@
 #!/bin/bash
 PYTHONPATH=polyhedral/vendor
-rm -rv "$PYTHONPATH"/*
+rm -r "$PYTHONPATH"/*
 pip3 install -t "$PYTHONPATH" -r vendor.txt

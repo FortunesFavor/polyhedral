@@ -17,4 +17,5 @@ else
     exit 1
 fi
 
-rsync -avl --delete --exclude-from "$IG" "$PKG" "$ZMODDIR"
+./vendor.sh
+rsync -avl --delete --include "vendor/" --exclude-from "$IG"  "$PKG" "$ZMODDIR"

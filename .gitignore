@@ -5,6 +5,7 @@ _trial_temp
 *.dll
 *.egg
 *.egg-info
+*.dist-info
 dist
 build
 eggs
