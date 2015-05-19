@@ -31,4 +31,4 @@ ___*.py
 Data.fs*
 test.py
 htmlcov
-
+vendor/
