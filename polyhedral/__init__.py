@@ -8,12 +8,10 @@ def _vendor():
 _vendor()
 del _vendor
 
-import random
-import re
-
 import znc
 
 import prettytable
+import diceparse
 
 
 def _mkhelp():
@@ -118,42 +116,15 @@ class polyhedral(znc.Module):
         return znc.CONTINUE
 
     def _roll(self, nick, to, dice_line):
-        pattern = (
-            r'(?P<count>\d+)'  # Number of dice
-            r'd(?P<sides>\d+)'  # Sides of dice
-            r'(?P<modifier>[+-]\d+)?'  # +/- modifiers (optional)
-            r'(?:\s(?P<action>.*))?'  # action text (optional)
-        )
-        match = re.match(pattern, dice_line)
-        if not match:
-            return
-        matchdict = match.groupdict()
-        count = int(matchdict.get('count'))
-        sides = int(matchdict.get('sides'))
-        mod = matchdict.get('modifier')
-        mod = int(mod) if mod is not None else 0
-        action = matchdict.get('action')
-        action = (
-            ' to {}'.format(action) if action is not None else ''
-        )
-        rolls = [random.randint(1, sides) for _ in range(count)]
-        rollstr = '+'.join(str(x) for x in rolls)
-        total = sum(rolls) + mod
-        modstr = '' if mod == 0 else '{:+}'.format(mod)
-        format_str = (
-            '{nick} rolled {count}d{sides}{modstr} '
-            '[{rollstr}{modstr} = {total}]{action}'
-        )
-        output = format_str.format(
-            nick=nick,
-            count=count,
-            sides=sides,
-            modstr=modstr,
-            rollstr=rollstr,
-            total=total,
-            action=action
-        )
-        self.send_message(to, output)
+        scanner = diceparse.roll.scanString(dice_line)
+        for res, start, end in scanner:
+            st = dice_line[start:end]
+            msg = diceparse.roll_format(
+                diceparse.roller(diceparse.validate(st, res)),
+                person=nick,
+            )
+            for line in msg.split('\n'):
+                self.send_message(to, line)
 
     def send_message(self, to, text):
         self.PutIRC('PRIVMSG {0} :{1}'.format(to, text))
