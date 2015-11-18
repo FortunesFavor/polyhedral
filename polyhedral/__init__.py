@@ -1,13 +1,3 @@
-def _vendor():
-    import os.path
-    import site
-    vendor = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'vendor')
-    if os.path.isdir(vendor):
-        site.addsitedir(vendor)
-
-_vendor()
-del _vendor
-
 import znc
 
 import prettytable

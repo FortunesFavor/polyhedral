@@ -8,4 +8,4 @@ Support is included for Standard D&D style dice, Pool based systems (WoD,
 Shadowrun), and FATE/FUDGE.
 
 To install, copy the entire package (polyhedral/) into the ZNC module
-directory, or simply run the install.sh script in the root of the repository.
+directory.
