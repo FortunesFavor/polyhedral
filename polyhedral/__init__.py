@@ -106,14 +106,9 @@ class polyhedral(znc.Module):
         return znc.CONTINUE
 
     def _roll(self, nick, to, dice_line):
-        scanner = diceparse.expression.scanString(dice_line)
-        for res, start, end in scanner:
-            st = dice_line[start:end]
-            msg = diceparse.roll_format(
-                diceparse.roller(diceparse.validate(st, res)),
-                person=nick,
-            )
-            for line in msg.split('\n'):
+        lines = diceparse.roll(dice_line)
+        if len(lines):
+            for line in lines:
                 self.send_message(to, line)
 
     def send_message(self, to, text):
