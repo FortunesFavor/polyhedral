@@ -1,3 +1,8 @@
+END OF LIFE
+===========
+
+I don't game on IRC anymore - I haven't touched this code in ages, and don't intend to update it.
+
 Polyhedral
 ==========
 
